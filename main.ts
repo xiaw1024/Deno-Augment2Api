@@ -23,7 +23,7 @@ import {
 const API_KEY = Deno.env.get("API_KEY");
 if (!API_KEY) {
   console.error("API_KEY environment variable is not set!");
-  Deno.exit(1);
+  throw new Error("API_KEY environment variable is not set!");
 }
 
 const kv = await Deno.openKv();
