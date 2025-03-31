@@ -19,6 +19,13 @@ import {
   ToolDefinition,
 } from "./types.ts";
 
+// 从环境变量获取API密钥
+const API_KEY = Deno.env.get("API_KEY");
+if (!API_KEY) {
+  console.error("API_KEY environment variable is not set!");
+  Deno.exit(1);
+}
+
 const kv = await Deno.openKv();
 
 const app = new Application();
@@ -99,6 +106,25 @@ const getAccessToken = async (
   return token;
 };
 
+// 添加鉴权中间件
+const authMiddleware = async (ctx: any, next: () => Promise<void>) => {
+  const authHeader = ctx.request.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    ctx.response.status = 401;
+    ctx.response.body = { status: "error", message: "Missing or invalid authorization header" };
+    return;
+  }
+
+  const token = authHeader.split(" ")[1];
+  if (token !== API_KEY) {
+    ctx.response.status = 401;
+    ctx.response.body = { status: "error", message: "Invalid API key" };
+    return;
+  }
+
+  await next();
+};
+
 router.get("/auth", (ctx: RouterContext<"/auth", Record<string, string>>) => {
   const oauthState = createOAuthState();
   const authorizeUrl = generateAuthorizeURL(oauthState);
@@ -113,7 +139,7 @@ router.get("/auth", (ctx: RouterContext<"/auth", Record<string, string>>) => {
   };
 });
 
-router.post("/getToken", async (ctx) => {
+router.post("/getToken", authMiddleware, async (ctx) => {
   const code = await ctx.request.body().value;
   if (code) {
     const parsedCode = {
@@ -158,6 +184,7 @@ router.post("/getToken", async (ctx) => {
 //getTokens
 router.get(
   "/getTokens",
+  authMiddleware,
   async (ctx: RouterContext<"/getTokens", Record<string, string>>) => {
     const iter = kv.list({ prefix: ["auth_token"] });
     console.log(iter);
@@ -184,7 +211,7 @@ router.get(
 );
 
 //deleteToken
-router.delete("/deleteToken/:token", async (ctx) => {
+router.delete("/deleteToken/:token", authMiddleware, async (ctx) => {
   try {
     const token = ctx.params.token;
     await kv.delete([`auth_token`, token]);

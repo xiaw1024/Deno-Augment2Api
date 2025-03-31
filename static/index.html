@@ -403,6 +403,32 @@
         color: var(--secondary-color);
         text-decoration: underline;
       }
+
+      /* 添加API Key输入框样式 */
+      .api-key-input {
+        margin-bottom: 20px;
+      }
+
+      .api-key-input label {
+        display: block;
+        margin-bottom: 5px;
+        color: #666;
+        font-weight: 500;
+      }
+
+      .api-key-input input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        font-size: 14px;
+        transition: border-color 0.3s;
+      }
+
+      .api-key-input input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+      }
     </style>
     <!-- 添加图标 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" />
@@ -419,6 +445,11 @@
           <div class="panel-title">
             <i class="bi bi-key-fill"></i>
             <h2>当前Token列表</h2>
+          </div>
+
+          <div class="api-key-input">
+            <label for="api-key">API Key:</label>
+            <input type="password" id="api-key" placeholder="请输入API Key" />
           </div>
 
           <div id="token-list">加载中...</div>
@@ -478,8 +509,23 @@
       document.addEventListener("DOMContentLoaded", function () {
         // 获取当前Token列表
         function fetchCurrentToken() {
-          fetch("/getTokens")
-            .then((response) => response.json())
+          const apiKey = document.getElementById("api-key").value;
+          if (!apiKey) {
+            showError("请先输入API Key");
+            return Promise.resolve();
+          }
+
+          fetch("/getTokens", {
+            headers: {
+              "Authorization": `Bearer ${apiKey}`
+            }
+          })
+            .then((response) => {
+              if (response.status === 401) {
+                throw new Error("API Key无效");
+              }
+              return response.json();
+            })
             .then((data) => {
               if (data.status === "success") {
                 const tokenListElement = document.getElementById("token-list");
@@ -588,6 +634,13 @@
           const button = this;
           const authResponse = document.getElementById("auth-response").value.trim();
           const validationMessage = document.getElementById("validation-message");
+          const apiKey = document.getElementById("api-key").value;
+
+          if (!apiKey) {
+            validationMessage.textContent = "请先输入API Key";
+            validationMessage.style.display = "block";
+            return;
+          }
 
           // 检查是否为空
           if (!authResponse) {
@@ -611,6 +664,7 @@
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "Authorization": `Bearer ${apiKey}`
             },
             body: authResponse,
           })
@@ -653,10 +707,19 @@
           if (e.target.closest(".delete-token")) {
             const button = e.target.closest(".delete-token");
             const token = button.dataset.token;
+            const apiKey = document.getElementById("api-key").value;
+
+            if (!apiKey) {
+              alert("请先输入API Key");
+              return;
+            }
 
             if (confirm("确定要删除此Token吗？")) {
               fetch(`/deleteToken/${token}`, {
                 method: "DELETE",
+                headers: {
+                  "Authorization": `Bearer ${apiKey}`
+                }
               })
                 .then((response) => response.json())
                 .then((data) => {
