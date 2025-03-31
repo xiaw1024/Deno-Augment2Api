@@ -332,12 +332,31 @@
         display: flex;
         justify-content: flex-end;
         margin-top: 8px;
+        gap: 10px;
       }
 
       .token-actions button {
-        margin-left: 10px;
+        margin-left: 0;
         padding: 6px 12px;
         font-size: 13px;
+      }
+
+      .copy-success {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--success-color);
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      .copy-success.show {
+        opacity: 1;
       }
 
       .no-tokens {
@@ -560,6 +579,9 @@
                                     <div class="token-label">创建时间:</div>
                                     <div class="token-display">${tokenInfo.created_at}</div>
                                     <div class="token-actions">
+                                        <button class="copy-token" data-token="${tokenInfo.token}">
+                                            <i class="bi bi-clipboard"></i> 复制
+                                        </button>
                                         <button class="delete-token" data-token="${tokenInfo.token}">
                                             <i class="bi bi-trash"></i> 删除
                                         </button>
@@ -732,6 +754,39 @@
                 .catch((error) => {
                   alert("请求失败: " + error.message);
                 });
+            }
+          } else if (e.target.closest(".copy-token")) {
+            const button = e.target.closest(".copy-token");
+            const token = button.dataset.token;
+            
+            // 创建临时文本区域
+            const textArea = document.createElement("textarea");
+            textArea.value = token;
+            document.body.appendChild(textArea);
+            textArea.select();
+            
+            try {
+              // 执行复制
+              document.execCommand("copy");
+              
+              // 显示复制成功提示
+              const successMessage = document.createElement("div");
+              successMessage.className = "copy-success";
+              successMessage.textContent = "已复制";
+              button.appendChild(successMessage);
+              
+              // 添加显示类
+              setTimeout(() => successMessage.classList.add("show"), 0);
+              
+              // 移除提示
+              setTimeout(() => {
+                successMessage.classList.remove("show");
+                setTimeout(() => successMessage.remove(), 300);
+              }, 1500);
+            } catch (err) {
+              console.error("复制失败:", err);
+            } finally {
+              document.body.removeChild(textArea);
             }
           }
         });
